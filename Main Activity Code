@@ -1,0 +1,151 @@
+package com.example.myfirstapplication;
+
+import android.os.Bundle;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Spinner;
+import android.widget.TextView;
+import androidx.appcompat.app.AppCompatActivity;
+import java.util.HashMap;
+import java.util.Map;
+
+public class MainActivity extends AppCompatActivity {
+
+    private Spinner spinnerCategory, spinnerFrom, spinnerTo;
+    private EditText inputValue;
+    private Button convertButton;
+    private TextView resultView;
+
+    private final Map<String, Double> lengthConversions = new HashMap<>();
+    private final Map<String, Double> weightConversions = new HashMap<>();
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        // Initialize UI components
+        spinnerCategory = findViewById(R.id.spinnerCategory);
+        spinnerFrom = findViewById(R.id.spinnerFrom);
+        spinnerTo = findViewById(R.id.spinnerTo);
+        inputValue = findViewById(R.id.inputValue);
+        convertButton = findViewById(R.id.convertButton);
+        resultView = findViewById(R.id.resultView);
+
+        // Populate conversion maps
+        setupConversionMaps();
+
+        // Set up category spinner
+        String[] categories = {"Length", "Weight", "Temperature"};
+        ArrayAdapter<String> categoryAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, categories);
+        spinnerCategory.setAdapter(categoryAdapter);
+
+        // Handle category selection
+        spinnerCategory.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                updateUnitSpinners(categories[position]);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+
+        // Handle conversion button click
+        convertButton.setOnClickListener(v -> performConversion());
+    }
+
+    private void setupConversionMaps() {
+        // Length Conversions (to cm)
+        lengthConversions.put("Inch", 2.54);
+        lengthConversions.put("Foot", 30.48);
+        lengthConversions.put("Yard", 91.44);
+        lengthConversions.put("Mile", 160934.0); // in cm
+
+        // Weight Conversions (to kg)
+        weightConversions.put("Pound", 0.453592);
+        weightConversions.put("Ounce", 0.0283495);
+        weightConversions.put("Ton", 907.185);
+    }
+
+    private void updateUnitSpinners(String category) {
+        String[] units;
+        switch (category) {
+            case "Length":
+                units = new String[]{"Inch", "Foot", "Yard", "Mile", "Centimeter", "Meter", "Kilometer"};
+                break;
+            case "Weight":
+                units = new String[]{"Pound", "Ounce", "Ton", "Gram", "Kilogram"};
+                break;
+            case "Temperature":
+                units = new String[]{"Celsius", "Fahrenheit", "Kelvin"};
+                break;
+            default:
+                units = new String[]{};
+        }
+
+        ArrayAdapter<String> unitAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, units);
+        spinnerFrom.setAdapter(unitAdapter);
+        spinnerTo.setAdapter(unitAdapter);
+    }
+
+    private void performConversion() {
+        String category = spinnerCategory.getSelectedItem().toString();
+        String fromUnit = spinnerFrom.getSelectedItem().toString();
+        String toUnit = spinnerTo.getSelectedItem().toString();
+        String inputText = inputValue.getText().toString();
+
+        if (inputText.isEmpty()) {
+            resultView.setText("Please enter a value");
+            return;
+        }
+
+        double input = Double.parseDouble(inputText);
+        double result = convertValue(category, fromUnit, toUnit, input);
+        resultView.setText(String.format("Result: %.2f %s", result, toUnit));
+    }
+
+    private double convertValue(String category, String fromUnit, String toUnit, double input) {
+        if (category.equals("Temperature")) {
+            return convertTemperature(fromUnit, toUnit, input);
+        } else if (category.equals("Length")) {
+            return convertUsingMap(lengthConversions, fromUnit, toUnit, input);
+        } else if (category.equals("Weight")) {
+            return convertUsingMap(weightConversions, fromUnit, toUnit, input);
+        }
+        return 0;
+    }
+
+    private double convertUsingMap(Map<String, Double> conversionMap, String fromUnit, String toUnit, double input) {
+        if (fromUnit.equals(toUnit)) return input;
+
+        // Convert to base unit (cm or kg)
+        double baseValue = fromUnit.equals("Centimeter") || fromUnit.equals("Gram") || fromUnit.equals("Kilogram") ?
+                input : input * conversionMap.get(fromUnit);
+
+        // Convert to target unit
+        if (toUnit.equals("Centimeter") || toUnit.equals("Gram") || toUnit.equals("Kilogram")) {
+            return baseValue;
+        } else {
+            return baseValue / conversionMap.get(toUnit);
+        }
+    }
+
+    private double convertTemperature(String from, String to, double input) {
+        if (from.equals(to)) return input;
+        switch (from) {
+            case "Celsius":
+                return to.equals("Fahrenheit") ? (input * 1.8) + 32 : input + 273.15;
+            case "Fahrenheit":
+                return to.equals("Celsius") ? (input - 32) / 1.8 : ((input - 32) / 1.8) + 273.15;
+            case "Kelvin":
+                return to.equals("Celsius") ? input - 273.15 : ((input - 273.15) * 1.8) + 32;
+            default:
+                return 0;
+        }
+    }
+}
